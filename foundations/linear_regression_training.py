@@ -11,24 +11,26 @@ class Solution:
         return np.squeeze(np.matmul(X, weights))
 
     learning_rate = 0.01
-    
+
     def train_model(
-        self, 
-        X: NDArray[np.float64], 
-        Y: NDArray[np.float64], 
-        num_iterations: int, 
+        self,
+        X: NDArray[np.float64], # (N, 3)
+        Y: NDArray[np.float64], # (N, )
+        num_iterations: int,
         initial_weights: NDArray[np.float64]
     ) -> NDArray[np.float64]:
-
-        # you will need to call get_derivative() for each weight
-        # and update each one separately based on the learning rate!
-        # return np.round(your_answer, 5)
+        # For each iteration:
+        #   1. Compute predictions with get_model_prediction(X, weights)
+        #   2. For each weight index j, compute gradient with get_derivative()
+        #   3. Update: weights[j] -= learning_rate * gradient
+        # Return np.round(final_weights, 5)
         w = initial_weights
-        for i in range(num_iterations):
-            model_prediction = self.get_model_prediction(X, w)
-            grad = -2 * X.T @ (Y - model_prediction) / len(X)
-            w -= self.learning_rate * grad
-        return np.round(w,5)
+        for _ in range(num_iterations):
+            pred = self.get_model_prediction(X, w)
+            for j in range(len(w)):
+                grad = self.get_derivative(pred, Y, len(X), X, j)
+                w[j] -= grad * self.learning_rate
+        return np.round(w, 5)
 
 
 
