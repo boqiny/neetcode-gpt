@@ -1,28 +1,35 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+from torchtyping import TensorType
 
 class MultiHeadedSelfAttention(nn.Module):
-    
+
     def __init__(self, embedding_dim: int, attention_dim: int, num_heads: int):
         super().__init__()
         torch.manual_seed(0)
-        # Hint: nn.ModuleList() will be useful. It works the same as a Python list
-        # but is useful here since instance variables of any subclass of nn.Module
-        # must also be subclasses of nn.Module
+        # Create num_heads SingleHeadAttention instances using nn.ModuleList
+        # Each head size = attention_dim // num_heads
+        # Use: self.SingleHeadAttention(embedding_dim, head_size)
+        # After the heads, add an output projection: nn.Linear(attention_dim, attention_dim, bias=False)
+        self.head_dim = attention_dim // num_heads
+        self.att_heads = nn.ModuleList()
+        for i in range(num_heads):
+            self.att_heads.append(self.SingleHeadAttention(embedding_dim, self.head_dim))
+        self.output_proj = nn.Linear(attention_dim, attention_dim, bias=False)
 
-        # Use self.SingleHeadAttention(embedding_dim, head_size) to instantiate. You have to calculate head_size.
-        self.head_size = attention_dim // num_heads
-        self.attention_heads = nn.ModuleList([self.SingleHeadAttention(embedding_dim, self.head_size) for i in range(num_heads)])
+
 
     def forward(self, embedded: TensorType[float]) -> TensorType[float]:
-        # Return answer to 4 decimal places
-        outputs = []
-        for head in self.attention_heads:
-            outputs.append(head.forward(embedded))
-        out = torch.cat(outputs, dim=-1)
-        return out
-        
+        # Run each head on the input, concatenate outputs along dim=2
+        # Pass concatenated result through the output projection (W_O)
+        # Return result rounded to 4 decimal places
+        head_outputs = []
+        for head in self.att_heads:
+            head_outputs.append(head(embedded))
+        concat = torch.cat(head_outputs, dim = 2)
+        out = self.output_proj(concat)
+        return torch.round(out, decimals=4)
+
     class SingleHeadAttention(nn.Module):
         def __init__(self, embedding_dim: int, attention_dim: int):
             super().__init__()
@@ -30,7 +37,7 @@ class MultiHeadedSelfAttention(nn.Module):
             self.key_gen = nn.Linear(embedding_dim, attention_dim, bias=False)
             self.query_gen = nn.Linear(embedding_dim, attention_dim, bias=False)
             self.value_gen = nn.Linear(embedding_dim, attention_dim, bias=False)
-        
+
         def forward(self, embedded: TensorType[float]) -> TensorType[float]:
             k = self.key_gen(embedded)
             q = self.query_gen(embedded)
